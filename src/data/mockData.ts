@@ -119,6 +119,17 @@ export const soilData = {
       { time: 'May 7', value: 38 },
     ],
   },
+  moisture: {
+    history: [
+      { time: 'Day 1', value: 38 },
+      { time: 'Day 2', value: 35 },
+      { time: 'Day 3', value: 32 },
+      { time: 'Day 4', value: 30 },
+      { time: 'Day 5', value: 36 },
+      { time: 'Day 6', value: 40 },
+      { time: 'Day 7', value: 42 },
+    ]
+  }
 };
 
 // Crop and yield prediction data
@@ -139,6 +150,13 @@ export const cropData = {
     { action: 'Increase Irrigation', priority: 'High', reason: 'Expected dry period next week' },
     { action: 'Apply Organic Pesticide', priority: 'Medium', reason: 'Preventative measure for potential pests' },
     { action: 'Soil Test', priority: 'Low', reason: 'Routine monitoring' },
+  ],
+  seasons: [
+    { name: 'Spring 2023', yield: 78, rainfall: 120 },
+    { name: 'Summer 2023', yield: 85, rainfall: 90 },
+    { name: 'Fall 2023', yield: 70, rainfall: 150 },
+    { name: 'Winter 2024', yield: 62, rainfall: 180 },
+    { name: 'Spring 2024', yield: 80, rainfall: 110 },
   ],
 };
 

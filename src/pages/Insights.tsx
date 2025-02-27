@@ -80,17 +80,40 @@ const Insights = () => {
     { name: 'Disease', value: predictionData.disasterRisk.disease },
   ];
 
-  // Format yield prediction data
-  const yieldTrendData = cropData.yield.history.map((entry: any) => ({
-    month: entry.month,
-    actual: entry.value,
-    predicted: entry.value * (1 + (Math.random() * 0.2 - 0.1)), // Simulate prediction with slight variation
-  }));
+  // Create sample yield trend data since cropData.yield.history is not available
+  const yieldTrendData = [
+    { month: 'Jan', actual: 65, predicted: 63 },
+    { month: 'Feb', actual: 68, predicted: 65 },
+    { month: 'Mar', actual: 72, predicted: 70 },
+    { month: 'Apr', actual: 75, predicted: 78 },
+    { month: 'May', actual: 78, predicted: 80 },
+    { month: 'Jun', actual: 82, predicted: 85 },
+  ];
 
   // Calculate alert acknowledgement percentage
   const acknowledgedAlerts = alertData.filter(alert => alert.acknowledged).length;
   const totalAlerts = alertData.length;
   const acknowledgedPercentage = Math.round((acknowledgedAlerts / totalAlerts) * 100);
+
+  // Create sample seasons data
+  const seasonsData = [
+    { name: 'Spring 2023', yield: 78, rainfall: 120 },
+    { name: 'Summer 2023', yield: 85, rainfall: 90 },
+    { name: 'Fall 2023', yield: 70, rainfall: 150 },
+    { name: 'Winter 2024', yield: 62, rainfall: 180 },
+    { name: 'Spring 2024', yield: 80, rainfall: 110 },
+  ];
+
+  // Create sample soil moisture history data
+  const soilMoistureHistory = [
+    { time: 'Day 1', value: 38 },
+    { time: 'Day 2', value: 35 },
+    { time: 'Day 3', value: 32 },
+    { time: 'Day 4', value: 30 },
+    { time: 'Day 5', value: 36 },
+    { time: 'Day 6', value: 40 },
+    { time: 'Day 7', value: 42 },
+  ];
 
   return (
     <Layout>
@@ -188,10 +211,13 @@ const Insights = () => {
                     <Tooltip />
                     <Bar 
                       dataKey="value" 
-                      fill={(entry) => {
-                        return entry.value > 30 ? "#EF4444" : "#10B981"
-                      }}
-                    />
+                      fill="#10B981"
+                      name="Risk Percentage"
+                    >
+                      {riskData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.value > 30 ? "#EF4444" : "#10B981"} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -373,7 +399,7 @@ const Insights = () => {
                 description="Last 30 days"
               >
                 <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={soilData.moisture.history}>
+                  <LineChart data={soilMoistureHistory}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis />
@@ -404,7 +430,7 @@ const Insights = () => {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart 
-                    data={cropData.seasons}
+                    data={seasonsData}
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />

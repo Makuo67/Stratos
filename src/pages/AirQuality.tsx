@@ -44,12 +44,39 @@ const AirQuality = () => {
     return "unhealthy";
   };
 
-  // Format data for pollutants chart
-  const pollutantsData = airQualityData.pollutants.map(item => ({
+  // Create pollutants data from the indicators for the chart
+  const pollutantsData = airQualityData.indicators.map(item => ({
     name: item.name,
     value: item.value,
-    limit: item.limit,
+    limit: item.max,
   }));
+
+  // Create indices data (using a subset of indicators or derived from AQI)
+  const indicesData = [
+    { name: 'Air Quality Index', value: airQualityData.current.aqi, status: getAqiStatus(airQualityData.current.aqi) },
+    { name: 'Pollution Level', value: Math.round(airQualityData.current.aqi * 0.8), status: getAqiStatus(Math.round(airQualityData.current.aqi * 0.8)) },
+    { name: 'Health Risk', value: Math.round(airQualityData.current.aqi * 1.2), status: getAqiStatus(Math.round(airQualityData.current.aqi * 1.2)) }
+  ];
+
+  // Create recommendations based on AQI
+  const recommendationsData = [
+    { 
+      category: 'General', 
+      advice: airQualityData.current.aqi <= 50 
+        ? 'Air quality is good. Perfect for outdoor activities.' 
+        : airQualityData.current.aqi <= 100 
+          ? 'Air quality is moderate. Consider reducing prolonged outdoor exertion if sensitive.' 
+          : 'Air quality is unhealthy. Reduce prolonged outdoor activities.'
+    },
+    {
+      category: 'Sensitive Groups',
+      advice: airQualityData.current.aqi <= 50
+        ? 'No special precautions needed.'
+        : airQualityData.current.aqi <= 100
+          ? 'Unusually sensitive people should consider reducing prolonged outdoor exertion.'
+          : 'Active children and adults, and people with respiratory disease, such as asthma, should limit prolonged outdoor exertion.'
+    }
+  ];
 
   return (
     <Layout>
@@ -115,7 +142,7 @@ const AirQuality = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {airQualityData.indices.map((index, i) => (
+                {indicesData.map((index, i) => (
                   <div key={i} className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="font-medium text-gray-700 dark:text-gray-300">{index.name}</span>
@@ -151,7 +178,7 @@ const AirQuality = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {airQualityData.recommendations.map((rec, i) => (
+                {recommendationsData.map((rec, i) => (
                   <div key={i} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
                     <h3 className="font-medium text-gray-900 dark:text-white mb-1">{rec.category}</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{rec.advice}</p>
