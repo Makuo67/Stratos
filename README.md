@@ -1,69 +1,178 @@
-# Welcome to your Lovable project
+# Stratos Web App
 
-## Project info
+A modern web application built with cutting-edge technologies for Environmental Predictive Analytics.
 
-**URL**: https://lovable.dev/projects/56a02e3a-0b39-4be0-b5a4-ef7355affc72
+## 🚀 Quick Start
 
-## How can I edit this code?
+1. **Clone the repository**
+   ```sh
+   git clone https://github.com/Makuo67/Stratos.git
+   cd Stratos
+   ```
 
-There are several ways of editing your application.
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
 
-**Use Lovable**
+3. **Start development server**
+   ```sh
+   npm run dev
+   ```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/56a02e3a-0b39-4be0-b5a4-ef7355affc72) and start prompting.
+## 🛠️ Technologies
 
-Changes made via Lovable will be committed automatically to this repo.
+This project leverages modern web technologies:
 
-**Use your preferred IDE**
+- **[Vite](https://vitejs.dev/)** - Next Generation Frontend Tooling
+- **[TypeScript](https://www.typescriptlang.org/)** - JavaScript with syntax for types
+- **[React](https://reactjs.org/)** - A JavaScript library for building user interfaces
+- **[shadcn/ui](https://ui.shadcn.com/)** - Beautifully designed components
+- **[Tailwind CSS](https://tailwindcss.com/)** - A utility-first CSS framework
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🔧 Development Options
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+<!-- ### 1. Using Lovable (Recommended)
+Visit the [Lovable Project](https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f) to start development. Changes are automatically committed to the repository. -->
 
-Follow these steps:
+### 2. Local Development
+Requirements:
+- Node.js & npm - [Install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 3. GitHub Direct Editing
+Edit files directly through GitHub's web interface using the pencil icon.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 4. GitHub Codespaces
+Launch a development environment directly in your browser:
+1. Go to repository main page
+2. Click "Code" button
+3. Select "Codespaces" tab
+4. Click "New codespace"
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🚀 Deployment
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+<!-- ### Quick Deploy
+Open [Lovable](https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f) and navigate to Share -> Publish. -->
 
-**Edit a file directly in GitHub**
+<!-- ### Custom Domain
+While custom domains aren't directly supported in Lovable yet, you can deploy to Netlify for custom domain support. See our [Custom domains documentation](https://docs.lovable.dev/tips-tricks/custom-domain/) for details. -->
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🔗 Project Links
 
-**Use GitHub Codespaces**
+<!-- - **Project URL**: [https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f](https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f) -->
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Authors
 
-## What technologies are used for this project?
+This project was created and maintained by the following contributors:
 
-This project is built with .
+### [Okeke Makuochukwu](https://github.com/Makuo67)
+- **Role**: Project Lead / Fullstack Developer
+- **Contributions**: Designed the architecture, implemented core features, and managed the project.
+- **Contact**: [okekemakuo67@gmail.com](mailto:okekemakuo67@gmail.com)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### [Frank Onyema](https://github.com/FrankOnyemaOrji)
+- **Role**: Fullstack Developer
+- **Contributions**: Built the user interface, integrated APIs, and improved user experience.
+- **Contact**: [f.orji@alustudent.com](mailto:f.orji@alustudent.com)
 
-## How can I deploy this project?
+### [Cumi Oyemike](https://github.com/CtripleU)
+- **Role**: DevOps Engineer
+- **Contributions**: Set up CI/CD pipelines, configured deployment environments, and optimized performance.
+- **Contact**: [c.oyemike@alustudent.com](mailto:c.oyemike@alustudent.com)
 
-Simply open [Lovable](https://lovable.dev/projects/56a02e3a-0b39-4be0-b5a4-ef7355affc72) and click on Share -> Publish.
+---
 
-## I want to use a custom domain - is that possible?
+We welcome feedback and contributions! Feel free to reach out to any of the authors for questions or collaboration.
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+# Stratos Web App
+
+A modern web application built with cutting-edge technologies for Environmental Predictive Analytics.
+
+## 🚀 Quick Start
+
+1. **Clone the repository**
+   ```sh
+   git clone https://github.com/Makuo67/Stratos.git
+   cd Stratos
+   ```
+
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
+
+3. **Start development server**
+   ```sh
+   npm run dev
+   ```
+
+## 🛠️ Technologies
+
+This project leverages modern web technologies:
+
+- **[Vite](https://vitejs.dev/)** - Next Generation Frontend Tooling
+- **[TypeScript](https://www.typescriptlang.org/)** - JavaScript with syntax for types
+- **[React](https://reactjs.org/)** - A JavaScript library for building user interfaces
+- **[shadcn/ui](https://ui.shadcn.com/)** - Beautifully designed components
+- **[Tailwind CSS](https://tailwindcss.com/)** - A utility-first CSS framework
+
+## 🔧 Development Options
+
+<!-- ### 1. Using Lovable (Recommended)
+Visit the [Lovable Project](https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f) to start development. Changes are automatically committed to the repository. -->
+
+### 2. Local Development
+Requirements:
+- Node.js & npm - [Install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+
+### 3. GitHub Direct Editing
+Edit files directly through GitHub's web interface using the pencil icon.
+
+### 4. GitHub Codespaces
+Launch a development environment directly in your browser:
+1. Go to repository main page
+2. Click "Code" button
+3. Select "Codespaces" tab
+4. Click "New codespace"
+
+## 🚀 Deployment
+
+<!-- ### Quick Deploy
+Open [Lovable](https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f) and navigate to Share -> Publish. -->
+
+<!-- ### Custom Domain
+While custom domains aren't directly supported in Lovable yet, you can deploy to Netlify for custom domain support. See our [Custom domains documentation](https://docs.lovable.dev/tips-tricks/custom-domain/) for details. -->
+
+## 🔗 Project Links
+
+<!-- - **Project URL**: [https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f](https://lovable.dev/projects/46775623-3a05-4e96-8c6b-f27cb5dc794f) -->
+
+## Authors
+
+This project was created and maintained by the following contributors:
+
+### [Okeke Makuochukwu](https://github.com/Makuo67)
+- **Role**: Project Lead / Fullstack Developer
+- **Contributions**: Designed the architecture, implemented core features, and managed the project.
+- **Contact**: [okekemakuo67@gmail.com](mailto:okekemakuo67@gmail.com)
+
+### [Frank Onyema](https://github.com/FrankOnyemaOrji)
+- **Role**: Fullstack Developer
+- **Contributions**: Built the user interface, integrated APIs, and improved user experience.
+- **Contact**: [f.orji@alustudent.com](mailto:f.orji@alustudent.com)
+
+### [Cumi Oyemike](https://github.com/CtripleU)
+- **Role**: DevOps Engineer
+- **Contributions**: Set up CI/CD pipelines, configured deployment environments, and optimized performance.
+- **Contact**: [c.oyemike@alustudent.com](mailto:c.oyemike@alustudent.com)
+
+---
+
+We welcome feedback and contributions! Feel free to reach out to any of the authors for questions or collaboration.
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
