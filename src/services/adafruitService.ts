@@ -46,6 +46,7 @@ const adafruitApi = axios.create({
 export const getLatestFeedData = async (feedKey: string): Promise<AdafruitFeedData> => {
   try {
     const response = await adafruitApi.get(`/${AIO_USERNAME}/feeds/${feedKey}/data/last`);
+    console.log(`Latest data for ${feedKey}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`Error fetching data for feed ${feedKey}:`, error);
@@ -83,6 +84,61 @@ export const getFeedDataHistory = async (
 };
 
 /**
+ * Parses GPS location string from Adafruit
+ * @param gpsString The GPS string from Adafruit
+ * @returns Object with parsed GPS values
+ */
+export const parseGpsData = (gpsString: string) => {
+  console.log("Parsing GPS data:", gpsString);
+  
+  try {
+    // Check if the string contains numeric values
+    if (gpsString && gpsString.match(/[-\d.,]/)) {
+      // Split by comma
+      const parts = gpsString.trim().split(',');
+      
+      // If we have at least 2 parts (latitude, longitude)
+      if (parts.length >= 2) {
+        // Get the latitude and longitude
+        // In Adafruit, the data we're seeing is likely latitude,longitude,altitude
+        const latitude = parseFloat(parts[0]);
+        const longitude = parseFloat(parts[1]);
+        const altitude = parts.length > 2 ? parseFloat(parts[2]) || 0 : 0;
+        const speed = 0; // No speed data available
+        
+        // Check if the values are valid numbers
+        if (!isNaN(latitude) && !isNaN(longitude) && 
+            Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180) {
+          console.log("Successfully parsed GPS data:", { latitude, longitude, altitude });
+          
+          return {
+            speed,
+            latitude,
+            longitude,
+            altitude
+          };
+        }
+      }
+    }
+    
+    // If any parsing fails, throw an error
+    throw new Error("Invalid GPS data format");
+    
+  } catch (error) {
+    console.error("Error parsing GPS data:", error);
+    console.error("Raw GPS string:", gpsString);
+    
+    // Return default values if parsing fails
+    return {
+      speed: 0,
+      latitude: -1.9441, // Default to African Leadership University
+      longitude: 30.0619,
+      altitude: 0
+    };
+  }
+};
+
+/**
  * Fetches the latest data for all the sensor feeds
  * @returns A consolidated object with all the sensor data
  */
@@ -98,22 +154,19 @@ export const getAllSensorData = async (): Promise<SensorData> => {
       getLatestFeedData('gps-location'),
     ]);
 
-    // Parse GPS location data (format: "speed,latitude,longitude,altitude")
-    const gpsValues = gpsData.value.split(',').map(parseFloat);
+    console.log("Raw GPS data from Adafruit:", gpsData.value);
+    
+    // Parse GPS location data
+    const gpsValues = parseGpsData(gpsData.value);
 
     // Create a consolidated object with all the sensor data
     return {
-      temperature: parseFloat(temperatureData.value),
-      humidity: parseFloat(humidityData.value),
-      co2: parseFloat(co2Data.value),
-      co: parseFloat(coData.value),
-      nh3: parseFloat(nh3Data.value),
-      gpsLocation: {
-        speed: gpsValues[0],
-        latitude: gpsValues[1],
-        longitude: gpsValues[2],
-        altitude: gpsValues[3],
-      },
+      temperature: parseFloat(temperatureData.value) || 0,
+      humidity: parseFloat(humidityData.value) || 0,
+      co2: parseFloat(co2Data.value) || 0,
+      co: parseFloat(coData.value) || 0,
+      nh3: parseFloat(nh3Data.value) || 0,
+      gpsLocation: gpsValues,
       timestamp: new Date(temperatureData.created_at),
     };
   } catch (error) {
@@ -145,31 +198,31 @@ export const getEnvironmentalHistory = async (days: number = 7) => {
     // Process temperature history data
     const temperature = temperatureHistory.map(item => ({
       time: new Date(item.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      value: parseFloat(item.value),
+      value: parseFloat(item.value) || 0,
       date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     })).reverse();
 
     // Process humidity history data
     const humidity = humidityHistory.map(item => ({
       time: new Date(item.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      value: parseFloat(item.value),
+      value: parseFloat(item.value) || 0,
       date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     })).reverse();
 
     // Process gas history data
     const co2 = co2History.map(item => ({
       time: new Date(item.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
-      value: parseFloat(item.value),
+      value: parseFloat(item.value) || 0,
     })).reverse();
 
     const co = coHistory.map(item => ({
       time: new Date(item.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
-      value: parseFloat(item.value),
+      value: parseFloat(item.value) || 0,
     })).reverse();
 
     const nh3 = nh3History.map(item => ({
       time: new Date(item.created_at).toLocaleDateString('en-US', { weekday: 'short' }),
-      value: parseFloat(item.value),
+      value: parseFloat(item.value) || 0,
     })).reverse();
 
     return {
@@ -191,6 +244,7 @@ const adafruitService = {
   getFeedDataHistory,
   getAllSensorData,
   getEnvironmentalHistory,
+  parseGpsData,
 };
 
 export default adafruitService;

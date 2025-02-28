@@ -9,9 +9,6 @@ import AirQuality from "./pages/AirQuality";
 import Insights from "./pages/Insights";
 import NotFound from "./pages/NotFound";
 
-// Import the new component
-// import IoTDashboard from "./components/IoTDashboard";
-// import IoTDashboard from "./components/IoTDashboard";
 import IoTDashboard from "./pages/IoTDashboard"; // Import the IoT Dashboard page
 
 const queryClient = new QueryClient();

@@ -33,9 +33,11 @@ import {
   Map,
   Sliders,
   Activity,
+  MapPin,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { dataService2 } from "@/services/dataService2";
+import geocodingService from "@/services/geocodingService";
 
 // Default location coordinates for African Leadership University
 const DEFAULT_LOCATION = {
@@ -49,7 +51,7 @@ const IoTDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [timeRange, setTimeRange] = useState([7]); // 7 days by default
   const [thresholdValue, setThresholdValue] = useState([800]); // Default CO2 threshold
-  const [mapUrl, setMapUrl] = useState("");
+  const [locationName, setLocationName] = useState(DEFAULT_LOCATION.name);
 
   // Fetch real data from Adafruit and OpenWeatherMap using dataService2
   const fetchData = async () => {
@@ -58,16 +60,43 @@ const IoTDashboard = () => {
       let sensorData;
       try {
         sensorData = await dataService2.getSensorData();
+        console.log("Retrieved sensor data:", sensorData);
       } catch (error) {
         console.error("Error fetching sensor data:", error);
         sensorData = null;
+        toast({
+          title: "Sensor Connection Error",
+          description:
+            "Could not connect to IoT sensors. Using default location.",
+          variant: "destructive",
+        });
       }
 
-      // Get location data (will use default if no GPS data available)
-      const locationData = await dataService2.getLocationData();
+      // If we have sensor data with valid GPS coordinates
+      if (
+        sensorData &&
+        sensorData.gpsLocation &&
+        Math.abs(sensorData.gpsLocation.latitude) > 0.001 &&
+        Math.abs(sensorData.gpsLocation.longitude) > 0.001
+      ) {
+        console.log(
+          "Using GPS coordinates from sensor:",
+          sensorData.gpsLocation
+        );
 
-      // If we have sensor data, return it along with location
-      if (sensorData) {
+        // Try to get location name using reverse geocoding
+        try {
+          const locationString = await geocodingService.reverseGeocode(
+            sensorData.gpsLocation.latitude,
+            sensorData.gpsLocation.longitude
+          );
+          setLocationName(locationString);
+          console.log("Location name from geocoding:", locationString);
+        } catch (error) {
+          console.error("Error in reverse geocoding:", error);
+          setLocationName("Sensor Location");
+        }
+
         return {
           sensorData: {
             temperature: sensorData.temperature,
@@ -80,17 +109,28 @@ const IoTDashboard = () => {
           location: {
             lat: sensorData.gpsLocation.latitude,
             lng: sensorData.gpsLocation.longitude,
-            name: "IoT Sensor Location",
+            name: locationName,
           },
           error: null,
         };
       }
 
-      // If no sensor data is available, return null for sensorData and use default location
+      // If no sensor data is available or GPS coordinates are invalid, return null for sensorData and use default location
       return {
-        sensorData: null,
+        sensorData: sensorData
+          ? {
+              temperature: sensorData.temperature,
+              humidity: sensorData.humidity,
+              co2: sensorData.co2,
+              co: sensorData.co,
+              nh3: sensorData.nh3,
+              timestamp: sensorData.timestamp,
+            }
+          : null,
         location: DEFAULT_LOCATION,
-        error: "No sensor data available from Adafruit",
+        error: sensorData
+          ? "Invalid GPS data from sensor"
+          : "No sensor data available from Adafruit",
       };
     } catch (error) {
       console.error("Error in fetchData:", error);
@@ -152,14 +192,6 @@ const IoTDashboard = () => {
       day: item.time,
       value: item.value,
     })) || emptyHistoricalData(timeRange);
-
-  // Set Google Maps URL for African Leadership University
-  useEffect(() => {
-    const { lat, lng } = DEFAULT_LOCATION;
-    setMapUrl(
-      `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${lat},${lng}&zoom=15`
-    );
-  }, []);
 
   // Handle refresh button click
   const handleRefresh = () => {
@@ -432,39 +464,32 @@ const IoTDashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* PM2.5 Card */}
+                {/* Sensor Location Card */}
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center text-lg">
-                      <Wind className="mr-2 h-5 w-5" />
-                      PM2.5
+                      <MapPin className="mr-2 h-5 w-5" />
+                      Sensor Location
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {hasSensorData ? (
-                      <>
-                        <div className="text-4xl font-bold mb-2">
-                          {sensorInfo.sensorData.pm25} μg/m³
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-500">
-                            Last updated:{" "}
-                            {sensorInfo.sensorData.timestamp.toLocaleTimeString()}
-                          </span>
-                          {getStatusBadge(sensorInfo.sensorData.pm25, {
-                            low: 12,
-                            medium: 35,
-                          })}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-24 text-gray-500">
-                        <span className="text-lg mb-2">
-                          No PM2.5 data available
-                        </span>
-                        <Badge variant="outline">Sensor offline</Badge>
+                    <div className="flex flex-col gap-2">
+                      <div className="text-lg font-medium">
+                        {sensorInfo?.location?.name || "Unknown Location"}
                       </div>
-                    )}
+                      <div className="text-sm text-gray-500">
+                        Coordinates:{" "}
+                        {sensorInfo?.location?.lat?.toFixed(6) || "N/A"},{" "}
+                        {sensorInfo?.location?.lng?.toFixed(6) || "N/A"}
+                      </div>
+                      {sensorInfo?.error && (
+                        <div className="text-amber-600 text-sm italic mt-1">
+                          {sensorInfo.error === "Invalid GPS data from sensor"
+                            ? "Using default location - invalid GPS data from sensor"
+                            : "Using default location - no GPS data available"}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -535,22 +560,12 @@ const IoTDashboard = () => {
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center">
                   <Map className="mr-2 h-5 w-5" />
-                  Sensor Location
+                  Map Preview
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
-                  <h3 className="font-medium text-lg">
-                    African Leadership University
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Coordinates: {DEFAULT_LOCATION.lat.toFixed(4)},{" "}
-                    {DEFAULT_LOCATION.lng.toFixed(4)}
-                  </p>
-                  <p className="text-sm text-amber-600 mt-2 italic">
-                    Using default location - no GPS data available from sensor
-                  </p>
-                  <div className="mt-4 h-40 relative">
+                  <div className="mt-2 h-40 relative">
                     {/* OpenStreetMap iframe for smaller preview */}
                     <iframe
                       title="Location Map Preview"
@@ -558,17 +573,29 @@ const IoTDashboard = () => {
                       height="100%"
                       style={{ border: 0 }}
                       src={`https://www.openstreetmap.org/export/embed.html?bbox=${
-                        DEFAULT_LOCATION.lng - 0.005
-                      },${DEFAULT_LOCATION.lat - 0.005},${
-                        DEFAULT_LOCATION.lng + 0.005
-                      },${DEFAULT_LOCATION.lat + 0.005}&layer=mapnik&marker=${
-                        DEFAULT_LOCATION.lat
-                      },${DEFAULT_LOCATION.lng}`}
+                        (sensorInfo?.location?.lng || DEFAULT_LOCATION.lng) -
+                        0.005
+                      },${
+                        (sensorInfo?.location?.lat || DEFAULT_LOCATION.lat) -
+                        0.005
+                      },${
+                        (sensorInfo?.location?.lng || DEFAULT_LOCATION.lng) +
+                        0.005
+                      },${
+                        (sensorInfo?.location?.lat || DEFAULT_LOCATION.lat) +
+                        0.005
+                      }&layer=mapnik&marker=${
+                        sensorInfo?.location?.lat || DEFAULT_LOCATION.lat
+                      },${sensorInfo?.location?.lng || DEFAULT_LOCATION.lng}`}
                       allowFullScreen
                     ></iframe>
                     <small className="absolute bottom-0 right-0 bg-white bg-opacity-70 px-1 text-xs">
                       <a
-                        href={`https://www.openstreetmap.org/?mlat=${DEFAULT_LOCATION.lat}&mlon=${DEFAULT_LOCATION.lng}`}
+                        href={`https://www.openstreetmap.org/?mlat=${
+                          sensorInfo?.location?.lat || DEFAULT_LOCATION.lat
+                        }&mlon=${
+                          sensorInfo?.location?.lng || DEFAULT_LOCATION.lng
+                        }`}
                         target="_blank"
                         rel="noopener"
                       >
@@ -679,7 +706,7 @@ const IoTDashboard = () => {
               <CardHeader>
                 <CardTitle>IoT Sensor Location</CardTitle>
                 <CardDescription>
-                  {hasSensorData
+                  {hasSensorData && !sensorInfo?.error
                     ? "Current GPS coordinates from sensor"
                     : "Default location shown - sensor GPS data unavailable"}
                 </CardDescription>
@@ -717,6 +744,53 @@ const IoTDashboard = () => {
                     View larger map
                   </a>
                 </small>
+              </CardContent>
+            </Card>
+
+            {/* Location Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Location Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Location Name:</span>
+                    <span className="text-sm">
+                      {sensorInfo?.location?.name || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Latitude:</span>
+                    <span className="text-sm">
+                      {sensorInfo?.location?.lat?.toFixed(6) || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Longitude:</span>
+                    <span className="text-sm">
+                      {sensorInfo?.location?.lng?.toFixed(6) || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Last Updated:</span>
+                    <span className="text-sm">
+                      {hasSensorData
+                        ? sensorInfo.sensorData.timestamp.toLocaleString()
+                        : "N/A"}
+                    </span>
+                  </div>
+                  {sensorInfo?.error && (
+                    <div className="mt-4 p-3 bg-amber-100 dark:bg-amber-900/20 rounded-md">
+                      <p className="text-amber-800 dark:text-amber-400 text-sm">
+                        <AlertTriangle className="inline-block h-4 w-4 mr-2" />
+                        {sensorInfo.error === "Invalid GPS data from sensor"
+                          ? "Using default location - received invalid GPS coordinates from sensor"
+                          : "Using default location - no GPS data available from sensor"}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
