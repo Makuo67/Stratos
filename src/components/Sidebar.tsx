@@ -14,7 +14,8 @@ import {
   HelpCircle,
   User,
   Menu,
-  X
+  X,
+  Cpu //New icon for IoT Dashboard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from './Logo';
@@ -32,6 +33,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Weather', path: '/weather', icon: Cloud },
     { name: 'Air Quality', path: '/air-quality', icon: Wind },
+    // Add the new menu item
+    { name: 'IoT Dashboard', path: '/iot-dashboard', icon: Cpu },
     { name: 'Insights', path: '/insights', icon: LineChart },
     { name: 'Alerts', path: '/alerts', icon: Bell },
     { name: 'Settings', path: '/settings', icon: Settings },
