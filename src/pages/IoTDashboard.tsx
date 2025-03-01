@@ -54,7 +54,7 @@ const IoTDashboard = () => {
   const [thresholdValue, setThresholdValue] = useState([800]); // Default CO2 threshold
   const [locationName, setLocationName] = useState(DEFAULT_LOCATION.name);
 
-  // NEW: State for Alerts dropdown in header
+  // State for Alerts dropdown in header
   const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
   const toggleAlertDropdown = () => setIsAlertDropdownOpen((prev) => !prev);
 
@@ -150,7 +150,7 @@ const IoTDashboard = () => {
     refetchInterval: 60000,
   });
 
-  // NEW: Query to fetch alert history
+  // Query to fetch alert history
   const {
     data: alerts,
     isLoading: isAlertsLoading,
@@ -161,7 +161,7 @@ const IoTDashboard = () => {
     refetchInterval: 60000,
   });
 
-  // NEW: Filter alerts to only include sensor-related ones (Temperature, Humidity, CO₂, NH₃)
+  // Filter alerts to only include sensor-related ones (Temperature, Humidity, CO₂, NH₃)
   const sensorAlerts = alerts
     ? alerts.filter((alert) =>
         alert.id.startsWith("alert-temp") ||
