@@ -54,14 +54,13 @@ const IoTDashboard = () => {
   const [thresholdValue, setThresholdValue] = useState([800]); // Default CO2 threshold
   const [locationName, setLocationName] = useState(DEFAULT_LOCATION.name);
 
-  // State for Alerts dropdown in header
+  // NEW: State for Alerts dropdown in header
   const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
   const toggleAlertDropdown = () => setIsAlertDropdownOpen((prev) => !prev);
 
   // Query to fetch sensor data and location info
   const fetchData = async () => {
     try {
-      // Try to get sensor data first
       let sensorData;
       try {
         sensorData = await dataService2.getSensorData();
@@ -71,25 +70,19 @@ const IoTDashboard = () => {
         sensorData = null;
         toast({
           title: "Sensor Connection Error",
-          description:
-            "Could not connect to IoT sensors. Using default location.",
+          description: "Could not connect to IoT sensors. Using default location.",
           variant: "destructive",
         });
       }
 
-      // If we have sensor data with valid GPS coordinates
       if (
         sensorData &&
         sensorData.gpsLocation &&
         Math.abs(sensorData.gpsLocation.latitude) > 0.001 &&
         Math.abs(sensorData.gpsLocation.longitude) > 0.001
       ) {
-        console.log(
-          "Using GPS coordinates from sensor:",
-          sensorData.gpsLocation
-        );
+        console.log("Using GPS coordinates from sensor:", sensorData.gpsLocation);
 
-        // Try to get location name using reverse geocoding
         try {
           const locationString = await geocodingService.reverseGeocode(
             sensorData.gpsLocation.latitude,
@@ -120,7 +113,6 @@ const IoTDashboard = () => {
         };
       }
 
-      // If no sensor data is available or GPS coordinates are invalid, return default location
       return {
         sensorData: sensorData
           ? {
@@ -139,7 +131,6 @@ const IoTDashboard = () => {
       };
     } catch (error) {
       console.error("Error in fetchData:", error);
-      // Return default in case of any error
       return {
         sensorData: null,
         location: DEFAULT_LOCATION,
@@ -148,7 +139,6 @@ const IoTDashboard = () => {
     }
   };
 
-  // Query for sensor data
   const {
     data: sensorInfo,
     isLoading,
@@ -157,10 +147,10 @@ const IoTDashboard = () => {
   } = useQuery({
     queryKey: ["sensor-data"],
     queryFn: fetchData,
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 60000,
   });
 
-  // Query to fetch alert history using dataService2
+  // NEW: Query to fetch alert history
   const {
     data: alerts,
     isLoading: isAlertsLoading,
@@ -168,13 +158,20 @@ const IoTDashboard = () => {
   } = useQuery({
     queryKey: ["alerts"],
     queryFn: dataService2.getAlertHistory,
-    refetchInterval: 60000, // same interval as sensor data
+    refetchInterval: 60000,
   });
 
-  // Determine pending alerts (not acknowledged)
-  const pendingAlerts = alerts ? alerts.filter((alert) => !alert.acknowledged) : [];
+  // NEW: Filter alerts to only include sensor-related ones (Temperature, Humidity, CO₂, NH₃)
+  const sensorAlerts = alerts
+    ? alerts.filter((alert) =>
+        alert.id.startsWith("alert-temp") ||
+        alert.id.startsWith("alert-humidity") ||
+        alert.id.startsWith("alert-co2") ||
+        alert.id.startsWith("alert-nh3")
+      )
+    : [];
+  const pendingAlerts = sensorAlerts.filter((alert) => !alert.acknowledged);
 
-  // Since we won't have actual historical data, we'll create empty datasets
   const emptyHistoricalData = (days) => {
     return Array(days[0])
       .fill(0)
@@ -186,14 +183,12 @@ const IoTDashboard = () => {
       }));
   };
 
-  // Fetch historical data
   const { data: historicalData } = useQuery({
     queryKey: ["environmental-history", timeRange[0]],
     queryFn: () => dataService2.getEnvironmentalHistory(timeRange[0]),
     enabled: !!sensorInfo,
   });
 
-  // Use real data or empty data if not available
   const temperatureHistory =
     historicalData?.temperature?.map((item) => ({
       day: item.date || item.time,
@@ -212,7 +207,6 @@ const IoTDashboard = () => {
       value: item.value,
     })) || emptyHistoricalData(timeRange);
 
-  // Handle refresh button click
   const handleRefresh = () => {
     toast({
       title: "Refreshing data...",
@@ -222,10 +216,8 @@ const IoTDashboard = () => {
     refetchAlerts();
   };
 
-  // Check if we have sensor data
   const hasSensorData = !!sensorInfo?.sensorData;
 
-  // Create status badges based on thresholds
   const getStatusBadge = (value, thresholds) => {
     if (value === undefined || value === null) {
       return <Badge variant="outline">No data</Badge>;
@@ -405,7 +397,7 @@ const IoTDashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* CO2 Card */}
+                {/* CO₂ Card */}
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center text-lg">
@@ -431,8 +423,7 @@ const IoTDashboard = () => {
                         </div>
                         {sensorInfo.sensorData.co2 > thresholdValue[0] && (
                           <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 text-sm rounded-md">
-                            Warning: CO₂ level above threshold (
-                            {thresholdValue[0]} ppm)
+                            Warning: CO₂ level above threshold ({thresholdValue[0]} ppm)
                           </div>
                         )}
                       </>
@@ -483,7 +474,7 @@ const IoTDashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* NH3 Card */}
+                {/* NH₃ Card */}
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center text-lg">
@@ -621,7 +612,6 @@ const IoTDashboard = () => {
               <CardContent>
                 <div className="mb-4">
                   <div className="mt-2 h-40 relative">
-                    {/* OpenStreetMap iframe for smaller preview */}
                     <iframe
                       title="Location Map Preview"
                       width="100%"
@@ -732,7 +722,6 @@ const IoTDashboard = () => {
                       strokeWidth={2}
                       activeDot={{ r: 8 }}
                     />
-                    {/* Threshold reference line */}
                     <Line
                       type="monotone"
                       dataKey="threshold"
@@ -763,7 +752,6 @@ const IoTDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="h-[500px] p-0 relative">
-                {/* OpenStreetMap iframe - no API key required */}
                 <iframe
                   title="Location Map"
                   width="100%"
@@ -798,7 +786,6 @@ const IoTDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Location Details */}
             <Card>
               <CardHeader>
                 <CardTitle>Location Details</CardTitle>
@@ -847,14 +834,14 @@ const IoTDashboard = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Recent Alerts Section */}
+        {/* Recent Alerts Section (only sensor-related alerts) */}
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
             Recent Alerts
           </h2>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {alerts && alerts.slice(0, 3).map((alert) => (
+              {sensorAlerts.slice(0, 3).map((alert) => (
                 <div key={alert.id} className="p-4 flex items-start gap-3">
                   <div className={`flex-shrink-0 mt-1 ${
                     alert.type === 'critical' ? 'text-red-500' : 
@@ -875,7 +862,6 @@ const IoTDashboard = () => {
             </div>
           </div>
         </div>
-
       </div>
     </Layout>
   );
