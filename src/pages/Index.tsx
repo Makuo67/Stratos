@@ -16,7 +16,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [selectedSensor, setSelectedSensor] = useState(null);
 
-  // NEW: State for the alert dropdown
+  // State for the alert dropdown
   const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
   const toggleAlertDropdown = () => setIsAlertDropdownOpen((prev) => !prev);
 
@@ -57,7 +57,7 @@ const Dashboard = () => {
   // Extract data
   const { weather, airQuality, soil, system, location } = allData;
 
-  // NEW: Determine pending alerts (alerts not yet acknowledged)
+  // Determine pending alerts (alerts not yet acknowledged)
   const pendingAlerts = system.alerts.filter((alert) => !alert.acknowledged);
 
   // Create SVG map of farm with sensors
