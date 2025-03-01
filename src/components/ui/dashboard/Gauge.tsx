@@ -76,52 +76,56 @@ const Gauge: React.FC<GaugeProps> = ({
   return (
     <div className={cn("flex flex-col items-center", className)}>
       <svg width={width} height={height / 2 + 20} className="overflow-visible">
-        <circle
-          className="gauge-background"
-          cx={width / 2}
-          cy={height / 2}
-          r={radius}
-          strokeWidth={strokeWidth}
-          stroke="#E5E7EB"
-          strokeDasharray={`${halfCircumference} ${halfCircumference}`}
-          transform={`rotate(-180 ${width / 2} ${height / 2})`}
-        />
-        <circle
-          className="gauge-value"
-          cx={width / 2}
-          cy={height / 2}
-          r={radius}
-          strokeWidth={strokeWidth}
-          stroke={color}
-          strokeDasharray={`${arcLength} ${circumference}`}
-          strokeDashoffset={halfCircumference}
-          strokeLinecap="round"
-          transform={`rotate(-180 ${width / 2} ${height / 2})`}
-          style={{ transition: animated ? 'stroke-dasharray 0.5s ease-in-out' : 'none' }}
-        />
-        <text
-          x={width / 2}
-          y={height / 2 + 5}
-          fontSize={fontSize}
-          fontWeight="bold"
-          textAnchor="middle"
-          fill="currentColor"
-          className="text-gray-900 dark:text-white"
-        >
-          {Math.round(currentValue)}
-        </text>
-        {label && (
+        <g transform="translate(0, -25)">
+          <circle
+            className="gauge-background"
+            cx={width / 2}
+            cy={height / 2}
+            r={radius}
+            fill="white"
+            strokeWidth={strokeWidth}
+            stroke="#E5E7EB"
+            strokeDasharray={`${halfCircumference} ${halfCircumference}`}
+            transform={`rotate(-180 ${width / 2} ${height / 2})`}
+          />
+          <circle
+            className="gauge-value"
+            cx={width / 2}
+            cy={height / 2}
+            r={radius}
+            fill="none"
+            strokeWidth={strokeWidth}
+            stroke={color}
+            strokeDasharray={`${arcLength} ${circumference}`}
+            strokeDashoffset={halfCircumference}
+            strokeLinecap="round"
+            transform={`rotate(-180 ${width / 2} ${height / 2})`}
+            style={{ transition: animated ? 'stroke-dasharray 0.5s ease-in-out' : 'none' }}
+          />
           <text
             x={width / 2}
-            y={height / 2 + fontSize + 10}
-            fontSize={fontSize * 0.5}
+            y={height / 2 + 5}
+            fontSize={fontSize}
+            fontWeight="bold"
             textAnchor="middle"
             fill="currentColor"
-            className="text-gray-500 dark:text-gray-400"
+            className="text-gray-900 dark:text-white"
           >
-            {label}
+            {Math.round(currentValue)}
           </text>
-        )}
+          {label && (
+            <text
+              x={width / 2}
+              y={height / 2 + fontSize + 10}
+              fontSize={fontSize * 0.5}
+              textAnchor="middle"
+              fill="currentColor"
+              className="text-gray-500 dark:text-gray-400"
+            >
+              {label}
+            </text>
+          )}
+        </g>
       </svg>
     </div>
   );
