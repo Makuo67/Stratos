@@ -272,6 +272,87 @@ const fetchAllData = async () => {
   }
 };
 
+/**
+ * Generates alert history based on sensor thresholds for Temperature, Humidity, CO₂, and NH₃.
+ * Thresholds used:
+ * - Temperature: Alert if > 30°C or < 15°C
+ * - Humidity: Alert if < 40% or > 80%
+ * - CO₂: Alert if > 1000 ppm
+ * - NH₃: Alert if > 25 ppb
+ */
+const getAlertHistory = async () => {
+  try {
+    const sensorData = await fetchSensorData();
+    // Start with any existing alerts (from mock data) if needed, or an empty array
+    const alerts = [...mockSystemData.alerts];
+    
+    // Temperature Alerts
+    if (sensorData.temperature > 30) {
+      alerts.unshift({
+        id: `alert-temp-${Date.now()}`,
+        type: 'warning',
+        message: `High temperature detected: ${sensorData.temperature}°C`,
+        timestamp: new Date(),
+        acknowledged: false,
+      });
+    } else if (sensorData.temperature < 15) {
+      alerts.unshift({
+        id: `alert-temp-${Date.now()}`,
+        type: 'warning',
+        message: `Low temperature detected: ${sensorData.temperature}°C`,
+        timestamp: new Date(),
+        acknowledged: false,
+      });
+    }
+    
+    // Humidity Alerts
+    if (sensorData.humidity < 40) {
+      alerts.unshift({
+        id: `alert-humidity-${Date.now()}`,
+        type: 'warning',
+        message: `Low humidity detected: ${sensorData.humidity}%`,
+        timestamp: new Date(),
+        acknowledged: false,
+      });
+    } else if (sensorData.humidity > 80) {
+      alerts.unshift({
+        id: `alert-humidity-${Date.now()}`,
+        type: 'warning',
+        message: `High humidity detected: ${sensorData.humidity}%`,
+        timestamp: new Date(),
+        acknowledged: false,
+      });
+    }
+    
+    // CO₂ Alert
+    if (sensorData.co2 > 1000) {
+      alerts.unshift({
+        id: `alert-co2-${Date.now()}`,
+        type: 'warning',
+        message: `Elevated CO₂ levels: ${sensorData.co2} ppm`,
+        timestamp: new Date(),
+        acknowledged: false,
+      });
+    }
+    
+    // NH₃ Alert
+    if (sensorData.nh3 > 25) {
+      alerts.unshift({
+        id: `alert-nh3-${Date.now()}`,
+        type: 'warning',
+        message: `Elevated NH₃ levels: ${sensorData.nh3} ppb`,
+        timestamp: new Date(),
+        acknowledged: false,
+      });
+    }
+    
+    return alerts;
+  } catch (error) {
+    console.error('Error generating alert history:', error);
+    return mockSystemData.alerts;
+  }
+};
+
 // Service API
 export const dataService2 = {
   // Weather data
@@ -312,8 +393,9 @@ export const dataService2 = {
         ...mockSystemData,
         devices: mockSystemData.devices.map(device => ({
           ...device,
-          status: 'Online', // Set status to online if we can fetch sensor data
-          lastUpdate: new Date()
+          // Update device status based on sensor data availability
+          status: sensorData ? 'Online' : device.status,
+          lastUpdate: sensorData ? new Date() : device.lastUpdate
         }))
       };
     } catch (error) {
@@ -358,68 +440,9 @@ export const dataService2 = {
     return await fetchAllData();
   },
 
-  // Alert history
+  // Alert history (updated threshold logic for sensor-related alerts)
   getAlertHistory: async () => {
-    // Generate more realistic alerts based on real sensor data
-    try {
-      const sensorData = await fetchSensorData();
-      const alerts = [...mockSystemData.alerts];
-      
-      // Add temperature alert if too high or low
-      if (sensorData.temperature > 30) {
-        alerts.unshift({
-          id: `alert-temp-${Date.now()}`,
-          type: 'warning',
-          message: `High temperature detected: ${sensorData.temperature}°C`,
-          timestamp: new Date(),
-          acknowledged: false
-        });
-      } else if (sensorData.temperature < 10) {
-        alerts.unshift({
-          id: `alert-temp-${Date.now()}`,
-          type: 'warning',
-          message: `Low temperature detected: ${sensorData.temperature}°C`,
-          timestamp: new Date(),
-          acknowledged: false
-        });
-      }
-      
-      // Add humidity alert if too low
-      if (sensorData.humidity < 30) {
-        alerts.unshift({
-          id: `alert-humidity-${Date.now()}`,
-          type: 'warning',
-          message: `Low humidity detected: ${sensorData.humidity}%`,
-          timestamp: new Date(),
-          acknowledged: false
-        });
-      }
-      
-      // Add gas level alerts
-      if (sensorData.co2 > 800) {
-        alerts.unshift({
-          id: `alert-co2-${Date.now()}`,
-          type: 'warning',
-          message: `Elevated CO₂ levels: ${sensorData.co2} ppm`,
-          timestamp: new Date(),
-          acknowledged: false
-        });
-      }
-      
-      if (sensorData.co > 5) {
-        alerts.unshift({
-          id: `alert-co-${Date.now()}`,
-          type: 'critical',
-          message: `High CO levels detected: ${sensorData.co} ppm`,
-          timestamp: new Date(),
-          acknowledged: false
-        });
-      }
-      
-      return alerts;
-    } catch (error) {
-      return mockSystemData.alerts;
-    }
+    return await getAlertHistory();
   },
 };
 
