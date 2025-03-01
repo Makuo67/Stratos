@@ -5,6 +5,7 @@ import StatCard from "@/components/ui/dashboard/StatCard";
 import AirQualityCard from "@/components/ui/dashboard/AirQualityCard";
 import ChartContainer from "@/components/ui/dashboard/ChartContainer";
 import { dataService2 } from "@/services/dataService2";
+import adafruitService from "@/services/adafruitService";
 import {
   LineChart,
   Line,
@@ -24,15 +25,21 @@ import {
   Info,
   AlertTriangle,
   CheckCircle2,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import geocodingService from "@/services/geocodingService";
 
 const Dashboard = () => {
   const { toast } = useToast();
   const [selectedSensor, setSelectedSensor] = useState(null);
+  const [gpsData, setGpsData] = useState(null);
+  const [locationName, setLocationName] = useState("");
+  const [isGpsLoading, setIsGpsLoading] = useState(true);
+  const [gpsError, setGpsError] = useState(false);
 
   const {
     data: allData,
@@ -43,17 +50,91 @@ const Dashboard = () => {
     queryFn: dataService2.getAllData,
   });
 
+  // Function to fetch GPS data directly from Adafruit
+  const fetchGpsData = async () => {
+    try {
+      setIsGpsLoading(true);
+      setGpsError(false);
+
+      // Get the latest GPS data from the feed
+      const gpsDataResponse = await adafruitService.getLatestFeedData(
+        "gps-location"
+      );
+      console.log("Raw GPS data:", gpsDataResponse);
+
+      // Parse the GPS string into coordinates
+      const parsedGpsData = adafruitService.parseGpsData(gpsDataResponse.value);
+      console.log("Parsed GPS data:", parsedGpsData);
+
+      // Update state with the GPS data
+      setGpsData({
+        latitude: parsedGpsData.latitude,
+        longitude: parsedGpsData.longitude,
+        altitude: parsedGpsData.altitude,
+        timestamp: new Date(gpsDataResponse.created_at),
+        raw: gpsDataResponse.value,
+      });
+
+      // Try to get location name using reverse geocoding
+      try {
+        const name = await geocodingService.reverseGeocode(
+          parsedGpsData.latitude,
+          parsedGpsData.longitude
+        );
+        setLocationName(name);
+      } catch (geocodeError) {
+        console.error("Error in reverse geocoding:", geocodeError);
+        // Default name if geocoding fails
+        setLocationName("Current Location");
+      }
+
+      setIsGpsLoading(false);
+    } catch (error) {
+      console.error("Error fetching GPS data:", error);
+      setIsGpsLoading(false);
+      setGpsError(true);
+
+      toast({
+        title: "GPS Data Error",
+        description: "Couldn't fetch latest GPS data. Using default location.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchGpsData();
+
+    // Set up interval to refresh GPS data periodically (every 15 seconds)
+    const gpsInterval = setInterval(() => {
+      fetchGpsData();
+    }, 15000);
+
+    // Clean up interval on component unmount
+    return () => clearInterval(gpsInterval);
+  }, []);
+
+  // Handle refresh button click
   const handleRefreshData = async () => {
-    await refetch();
+    toast({
+      title: "Refreshing Data",
+      description: "Please wait while we update all sensor data...",
+      variant: "default",
+    });
+
+    // Refresh both dashboard data and GPS data
+    await Promise.all([refetch(), fetchGpsData()]);
+
     toast({
       title: "Data Refreshed",
-      description: "Farm data has been updated successfully",
+      description: "Dashboard and location data updated successfully",
       variant: "default",
     });
   };
 
+  // Show loading state while data is being fetched
   if (isLoading || !allData) {
-    // Show skeleton loading state
     return (
       <Layout>
         <div className="animate-pulse space-y-6">
@@ -78,407 +159,79 @@ const Dashboard = () => {
   // Extract data
   const { weather, airQuality, soil, system, location } = allData;
 
-  // Create SVG map visualization that resembles an actual map
-  const MapComponent = () => {
-    const viewBoxWidth = 400;
-    const viewBoxHeight = 300;
+  // Create real OpenStreetMap component
+  const RealMapComponent = () => {
+    // Use real-time GPS coordinates if available, otherwise use default
+    const centerLat = gpsData ? gpsData.latitude : -1.9441; // Default if no GPS data
+    const centerLng = gpsData ? gpsData.longitude : 30.0619;
 
-    // Real coordinates from Adafruit GPS data
-    const centerLat = -1.9441; // ALU Campus
-    const centerLng = 30.0619;
-
-    // Calculate map bounds
-    const spanLat = 0.015; // Smaller span to focus more tightly on the area
-    const spanLng = 0.02;
-
-    const minLat = centerLat - spanLat;
-    const maxLat = centerLat + spanLat;
-    const minLng = centerLng - spanLng;
-    const maxLng = centerLng + spanLng;
-
-    // Function to convert lat/lng to SVG coordinates
-    const latLngToPoint = (lat, lng) => {
-      const x = ((lng - minLng) / (maxLng - minLng)) * viewBoxWidth;
-      const y =
-        viewBoxHeight - ((lat - minLat) / (maxLat - minLat)) * viewBoxHeight;
-      return { x, y };
+    // Calculate map bounds for the iframe URL
+    const mapBounds = {
+      minLon: centerLng - 0.01,
+      minLat: centerLat - 0.01,
+      maxLon: centerLng + 0.01,
+      maxLat: centerLat + 0.01,
     };
 
-    // Create roads pattern
-    const renderRoads = () => {
-      // Main roads around ALU campus
-      const roads = [
-        // East-West road (horizontally across the map)
-        {
-          path: `M 0,${latLngToPoint(centerLat - 0.003, 0).y} 
-                 L ${viewBoxWidth},${latLngToPoint(centerLat - 0.003, 0).y}`,
-          width: 4,
-        },
-        // North-South road (vertically through the map)
-        {
-          path: `M ${latLngToPoint(0, centerLng + 0.004).x},0 
-                 L ${latLngToPoint(0, centerLng + 0.004).x},${viewBoxHeight}`,
-          width: 5,
-        },
-        // Secondary roads
-        {
-          path: `M 0,${latLngToPoint(centerLat + 0.008, 0).y} 
-                 L ${viewBoxWidth},${latLngToPoint(centerLat + 0.008, 0).y}`,
-          width: 2.5,
-        },
-        {
-          path: `M ${latLngToPoint(0, centerLng - 0.008).x},0 
-                 L ${latLngToPoint(0, centerLng - 0.008).x},${viewBoxHeight}`,
-          width: 3,
-        },
-        // Campus access road
-        {
-          path: `M ${latLngToPoint(0, centerLng).x},${
-            latLngToPoint(centerLat - 0.003, 0).y
-          }
-                 L ${latLngToPoint(0, centerLng).x},${
-            latLngToPoint(centerLat, 0).y
-          }`,
-          width: 2,
-        },
-      ];
-
-      return roads.map((road, index) => (
-        <path
-          key={`road-${index}`}
-          d={road.path}
-          stroke="#FFFFFF"
-          strokeWidth={road.width}
-          fill="none"
-        />
-      ));
-    };
-
-    // Create campus buildings
-    const renderBuildings = () => {
-      // Define campus buildings in relation to the center point
-      const buildings = [
-        // Main ALU building
-        {
-          points: [
-            { lat: centerLat + 0.001, lng: centerLng - 0.005 },
-            { lat: centerLat + 0.001, lng: centerLng + 0.005 },
-            { lat: centerLat - 0.001, lng: centerLng + 0.005 },
-            { lat: centerLat - 0.001, lng: centerLng - 0.005 },
-          ],
-          fill: "#D1D5DB",
-        },
-        // Secondary buildings
-        {
-          points: [
-            { lat: centerLat - 0.006, lng: centerLng - 0.004 },
-            { lat: centerLat - 0.006, lng: centerLng },
-            { lat: centerLat - 0.004, lng: centerLng },
-            { lat: centerLat - 0.004, lng: centerLng - 0.004 },
-          ],
-          fill: "#D1D5DB",
-        },
-        {
-          points: [
-            { lat: centerLat - 0.006, lng: centerLng + 0.002 },
-            { lat: centerLat - 0.006, lng: centerLng + 0.006 },
-            { lat: centerLat - 0.004, lng: centerLng + 0.006 },
-            { lat: centerLat - 0.004, lng: centerLng + 0.002 },
-          ],
-          fill: "#D1D5DB",
-        },
-      ];
-
-      return buildings.map((building, index) => {
-        const points = building.points
-          .map((point) => {
-            const svgPoint = latLngToPoint(point.lat, point.lng);
-            return `${svgPoint.x},${svgPoint.y}`;
-          })
-          .join(" ");
-
-        return (
-          <polygon
-            key={`building-${index}`}
-            points={points}
-            fill={building.fill}
-            stroke="#A1A1AA"
-            strokeWidth="1"
-          />
-        );
-      });
-    };
-
-    // Render green spaces/parks
-    const renderGreenSpaces = () => {
-      const greenSpaces = [
-        // Main campus green space
-        {
-          center: { lat: centerLat + 0.005, lng: centerLng },
-          radiusX: 0.005,
-          radiusY: 0.008,
-          fill: "#BBDBB8",
-        },
-        // Secondary green space
-        {
-          center: { lat: centerLat - 0.002, lng: centerLng - 0.01 },
-          radiusX: 0.004,
-          radiusY: 0.004,
-          fill: "#BBDBB8",
-        },
-      ];
-
-      return greenSpaces.map((space, index) => {
-        const centerPoint = latLngToPoint(space.center.lat, space.center.lng);
-        const rxPixels = (space.radiusX / (maxLng - minLng)) * viewBoxWidth;
-        const ryPixels = (space.radiusY / (maxLat - minLat)) * viewBoxHeight;
-
-        return (
-          <ellipse
-            key={`green-${index}`}
-            cx={centerPoint.x}
-            cy={centerPoint.y}
-            rx={rxPixels}
-            ry={ryPixels}
-            fill={space.fill}
-            stroke="#8FBC8F"
-            strokeWidth="1"
-          />
-        );
-      });
-    };
-
-    // Create sensor markers with realistic positioning
-    const renderSensors = () => {
-      // Define sensor positions in relation to the campus
-      const sensorOffsets = [
-        { type: "weather", lat: 0.004, lng: 0.006 }, // Weather station on roof
-        { type: "soil", lat: 0.006, lng: -0.003 }, // Soil sensor in green space
-        { type: "air", lat: -0.003, lng: -0.005 }, // Air quality monitor
-        { type: "field", lat: -0.007, lng: 0.006 }, // Field camera
-        { type: "irrigation", lat: 0.003, lng: -0.008 }, // Irrigation control
-      ];
-
-      // Match each sensor with its respective system device
-      return system.devices.map((device, index) => {
-        // Find matching offset or use a default position
-        const offset = sensorOffsets[index % sensorOffsets.length];
-        const sensorLat = centerLat + offset.lat;
-        const sensorLng = centerLng + offset.lng;
-        const point = latLngToPoint(sensorLat, sensorLng);
-
-        // Determine status color
-        const statusColor =
-          device.status === "Online"
-            ? "#10B981"
-            : device.status === "Warning"
-            ? "#F59E0B"
-            : "#EF4444";
-
-        // Determine icon based on device name or type
-        let SensorIcon = MapPin;
-        const deviceName = device.name.toLowerCase();
-        if (deviceName.includes("weather")) SensorIcon = Cloud;
-        if (deviceName.includes("soil")) SensorIcon = Droplets;
-        if (deviceName.includes("air") || deviceName.includes("quality"))
-          SensorIcon = Wind;
-
-        return (
-          <g
-            key={`sensor-${device.id}`}
-            transform={`translate(${point.x - 12}, ${point.y - 24})`}
-            onClick={() => setSelectedSensor(device)}
-            style={{ cursor: "pointer" }}
-          >
-            {/* Sensor visualization */}
-            <circle
-              cx="12"
-              cy="12"
-              r="16"
-              fill="#FFFFFF"
-              fillOpacity="0.9"
-              stroke={statusColor}
-              strokeWidth="2"
-            />
-            <SensorIcon color={statusColor} size={20} />
-            <text
-              x="12"
-              y="32"
-              textAnchor="middle"
-              fill="#1F2937"
-              fontSize="9"
-              fontWeight="bold"
-            >
-              {device.name.split(" ")[0]}
-            </text>
-          </g>
-        );
-      });
-    };
-
-    // Create map grid lines
-    const renderGrid = () => {
-      const gridLines = [];
-      const gridStep = 0.005;
-
-      // Latitude grid lines
-      for (
-        let lat = Math.ceil(minLat / gridStep) * gridStep;
-        lat <= maxLat;
-        lat += gridStep
-      ) {
-        const y = latLngToPoint(lat, 0).y;
-        gridLines.push(
-          <line
-            key={`lat-${lat}`}
-            x1="0"
-            y1={y}
-            x2={viewBoxWidth}
-            y2={y}
-            stroke="#CCCCCC"
-            strokeWidth="0.5"
-            strokeDasharray="2,2"
-            strokeOpacity="0.5"
-          />
-        );
-      }
-
-      // Longitude grid lines
-      for (
-        let lng = Math.ceil(minLng / gridStep) * gridStep;
-        lng <= maxLng;
-        lng += gridStep
-      ) {
-        const x = latLngToPoint(0, lng).x;
-        gridLines.push(
-          <line
-            key={`lng-${lng}`}
-            x1={x}
-            y1="0"
-            x2={x}
-            y2={viewBoxHeight}
-            stroke="#CCCCCC"
-            strokeWidth="0.5"
-            strokeDasharray="2,2"
-            strokeOpacity="0.5"
-          />
-        );
-      }
-
-      return gridLines;
-    };
+    // Construct the OpenStreetMap iframe URL with marker at the GPS coordinates
+    const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${mapBounds.minLon}%2C${mapBounds.minLat}%2C${mapBounds.maxLon}%2C${mapBounds.maxLat}&layer=mapnik&marker=${centerLat}%2C${centerLng}`;
 
     return (
-      <svg
-        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-        className="w-full h-full"
-      >
-        {/* Map background */}
-        <rect width={viewBoxWidth} height={viewBoxHeight} fill="#EEF5FA" />
+      <div className="relative w-full h-full flex flex-col">
+        <div className="relative w-full h-full flex-grow overflow-hidden">
+          {isGpsLoading && (
+            <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-20">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                <span className="text-sm text-gray-600">
+                  Updating location...
+                </span>
+              </div>
+            </div>
+          )}
 
-        {/* Base map elements */}
-        {renderGrid()}
-        {renderGreenSpaces()}
-        {renderRoads()}
-        {renderBuildings()}
+          {gpsError && (
+            <div className="absolute top-0 left-0 right-0 bg-red-100 text-red-800 text-xs p-1 text-center">
+              Error loading latest GPS data
+            </div>
+          )}
 
-        {/* Campus boundary */}
-        <path
-          d={`M ${latLngToPoint(centerLat - 0.009, centerLng - 0.012).x},${
-            latLngToPoint(centerLat - 0.009, centerLng - 0.012).y
-          }
-             L ${latLngToPoint(centerLat - 0.009, centerLng + 0.012).x},${
-            latLngToPoint(centerLat - 0.009, centerLng + 0.012).y
-          }
-             L ${latLngToPoint(centerLat + 0.009, centerLng + 0.012).x},${
-            latLngToPoint(centerLat + 0.009, centerLng + 0.012).y
-          }
-             L ${latLngToPoint(centerLat + 0.009, centerLng - 0.012).x},${
-            latLngToPoint(centerLat + 0.009, centerLng - 0.012).y
-          }
-             Z`}
-          fill="none"
-          stroke="#3B82F6"
-          strokeWidth="1.5"
-          strokeDasharray="4,2"
-        />
-
-        {/* Render sensor positions */}
-        {renderSensors()}
-
-        {/* Main GPS location marker with pulsing effect */}
-        <g
-          transform={`translate(${
-            latLngToPoint(centerLat, centerLng).x - 10
-          }, ${latLngToPoint(centerLat, centerLng).y - 10})`}
-        >
-          <circle
-            cx="10"
-            cy="10"
-            r="5"
-            fill="#EF4444"
-            stroke="#FFFFFF"
-            strokeWidth="2"
-          >
-            <animate
-              attributeName="r"
-              values="5;8;5"
-              dur="3s"
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="fill-opacity"
-              values="1;0.6;1"
-              dur="3s"
-              repeatCount="indefinite"
-            />
-          </circle>
-        </g>
-
-        {/* Map title and scale */}
-        <text
-          x={viewBoxWidth / 2}
-          y="16"
-          textAnchor="middle"
-          fill="#1E40AF"
-          fontSize="11"
-          fontWeight="bold"
-        >
-          African Leadership University Campus
-        </text>
-
-        {/* Scale bar */}
-        <g transform={`translate(${viewBoxWidth - 50}, ${viewBoxHeight - 15})`}>
-          <line x1="0" y1="0" x2="40" y2="0" stroke="#333333" strokeWidth="2" />
-          <line x1="0" y1="-3" x2="0" y2="3" stroke="#333333" strokeWidth="2" />
-          <line
-            x1="40"
-            y1="-3"
-            x2="40"
-            y2="3"
-            stroke="#333333"
-            strokeWidth="2"
+          {/* Real map using OpenStreetMap */}
+          <iframe
+            src={mapUrl}
+            title="Live GPS Map"
+            className="w-full h-full border-0"
+            loading="lazy"
           />
-          <text x="20" y="-5" textAnchor="middle" fill="#333333" fontSize="7">
-            100m
-          </text>
-        </g>
 
-        {/* North arrow */}
-        <g transform="translate(20, 30)">
-          <path d="M0,12 L6,0 L12,12 L6,8 Z" fill="#1E3A8A" />
-          <text
-            x="6"
-            y="22"
-            textAnchor="middle"
-            fill="#1E3A8A"
-            fontSize="8"
-            fontWeight="bold"
-          >
-            N
-          </text>
-        </g>
-      </svg>
+          {/* Map controls */}
+          <div className="absolute top-2 right-2 flex flex-col gap-2">
+            <button className="w-8 h-8 bg-white rounded shadow flex items-center justify-center text-gray-700 font-bold">
+              +
+            </button>
+            <button className="w-8 h-8 bg-white rounded shadow flex items-center justify-center text-gray-700 font-bold">
+              -
+            </button>
+          </div>
+
+          {/* GPS Info Bar */}
+          <div className="absolute bottom-0 left-0 right-0 bg-white bg-opacity-90 p-2 flex justify-between items-center text-xs text-gray-700">
+            <div className="flex items-center">
+              <MapPin className="h-4 w-4 text-blue-500 mr-1" />
+              <span>
+                {centerLat.toFixed(6)}, {centerLng.toFixed(6)}
+              </span>
+            </div>
+            <div>
+              {gpsData ? (
+                <>Updated: {gpsData.timestamp.toLocaleTimeString()}</>
+              ) : (
+                <>Waiting for GPS data...</>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -490,6 +243,7 @@ const Dashboard = () => {
             Stratos Dashboard
           </h1>
           <Button onClick={handleRefreshData} className="self-start">
+            <RefreshCw className="mr-2 h-4 w-4" />
             Refresh Data
           </Button>
         </div>
@@ -561,23 +315,35 @@ const Dashboard = () => {
           </ChartContainer>
         </div>
 
-        {/* Farm Map Section */}
+        {/* Real-time Map Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Map */}
           <Card className="lg:col-span-2">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center">
-                <MapPin className="mr-2 h-5 w-5" />
-                Stratos Sensor Locations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-[400px]">
-              <MapComponent />
-              <div className="text-xs text-gray-500 mt-2 text-center">
-                Latitude: -1.9441, Longitude: 30.0619 • African Leadership
-                University Campus
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center">
+                  <MapPin className="mr-2 h-5 w-5" />
+                  Live Location Map
+                </CardTitle>
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isGpsLoading
+                        ? "bg-yellow-500 animate-pulse"
+                        : "bg-green-500"
+                    }`}
+                  ></div>
+                  <span>{isGpsLoading ? "Updating..." : "Live"}</span>
+                </div>
               </div>
+            </CardHeader>
+            <CardContent className="h-[400px] p-0 overflow-hidden">
+              <RealMapComponent />
             </CardContent>
+            <div className="px-6 py-2 text-xs text-gray-500 text-center border-t">
+              © OpenStreetMap contributors{" "}
+              {locationName ? `• ${locationName}` : ""}
+            </div>
           </Card>
 
           {/* Device Info */}
@@ -587,16 +353,42 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* GPS Tracker as first item */}
+                <div className="p-3 border rounded-lg flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <div
+                    className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
+                      isGpsLoading
+                        ? "bg-yellow-500"
+                        : gpsError
+                        ? "bg-red-500"
+                        : "bg-green-500"
+                    }`}
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">GPS Tracker</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline">
+                        {isGpsLoading
+                          ? "Updating"
+                          : gpsError
+                          ? "Error"
+                          : "Online"}
+                      </Badge>
+                      <span className="text-xs text-gray-500">
+                        {gpsData
+                          ? `Last: ${gpsData.timestamp.toLocaleTimeString()}`
+                          : "No data"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Other devices */}
                 {system.devices.map((device) => (
                   <div
                     key={device.id}
                     className="p-3 border rounded-lg flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    onClick={() => {
-                      const sensor = location.sensorLocations.find(
-                        (s) => s.id === device.id
-                      );
-                      if (sensor) setSelectedSensor(sensor);
-                    }}
+                    onClick={() => setSelectedSensor(device)}
                   >
                     <div
                       className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
