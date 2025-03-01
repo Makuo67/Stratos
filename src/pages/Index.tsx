@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Layout from '@/components/Layout';
 import StatCard from '@/components/ui/dashboard/StatCard';
@@ -6,7 +6,7 @@ import AirQualityCard from '@/components/ui/dashboard/AirQualityCard';
 import ChartContainer from '@/components/ui/dashboard/ChartContainer';
 import { dataService2 } from '@/services/dataService2';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { Cloud, Droplets, Wind, Thermometer, MapPin, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Cloud, Droplets, Wind, Thermometer, MapPin, Info, AlertTriangle, CheckCircle2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,11 @@ import { Badge } from '@/components/ui/badge';
 const Dashboard = () => {
   const { toast } = useToast();
   const [selectedSensor, setSelectedSensor] = useState(null);
-  
+
+  // NEW: State for the alert dropdown
+  const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
+  const toggleAlertDropdown = () => setIsAlertDropdownOpen((prev) => !prev);
+
   const { data: allData, isLoading, refetch } = useQuery({
     queryKey: ['dashboard-all'],
     queryFn: dataService2.getAllData,
@@ -53,19 +57,34 @@ const Dashboard = () => {
   // Extract data
   const { weather, airQuality, soil, system, location } = allData;
 
+  // NEW: Determine pending alerts (alerts not yet acknowledged)
+  const pendingAlerts = system.alerts.filter((alert) => !alert.acknowledged);
+
   // Create SVG map of farm with sensors
   const MapComponent = () => {
     const viewBoxWidth = 400;
     const viewBoxHeight = 300;
     
     // Calculate map bounds
-    const minLat = Math.min(...location.sensorLocations.map(s => s.lat), ...location.zones.map(z => Math.min(...z.coords.map(c => c.lat))));
-    const maxLat = Math.max(...location.sensorLocations.map(s => s.lat), ...location.zones.map(z => Math.max(...z.coords.map(c => c.lat))));
-    const minLng = Math.min(...location.sensorLocations.map(s => s.lng), ...location.zones.map(z => Math.min(...z.coords.map(c => c.lng))));
-    const maxLng = Math.max(...location.sensorLocations.map(s => s.lng), ...location.zones.map(z => Math.max(...z.coords.map(c => c.lng))));
+    const minLat = Math.min(
+      ...location.sensorLocations.map(s => s.lat),
+      ...location.zones.map(z => Math.min(...z.coords.map(c => c.lat)))
+    );
+    const maxLat = Math.max(
+      ...location.sensorLocations.map(s => s.lat),
+      ...location.zones.map(z => Math.max(...z.coords.map(c => c.lat)))
+    );
+    const minLng = Math.min(
+      ...location.sensorLocations.map(s => s.lng),
+      ...location.zones.map(z => Math.min(...z.coords.map(c => c.lng)))
+    );
+    const maxLng = Math.max(
+      ...location.sensorLocations.map(s => s.lng),
+      ...location.zones.map(z => Math.max(...z.coords.map(c => c.lng)))
+    );
     
     // Function to convert lat/lng to SVG coordinates
-    const latLngToPoint = (lat, lng) => {
+    const latLngToPoint = (lat: number, lng: number) => {
       const x = ((lng - minLng) / (maxLng - minLng)) * viewBoxWidth;
       const y = viewBoxHeight - ((lat - minLat) / (maxLat - minLat)) * viewBoxHeight;
       return { x, y };
@@ -172,11 +191,54 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-6 pb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Farm Dashboard</h1>
-          <Button onClick={handleRefreshData} className="self-start">
-            Refresh Data
-          </Button>
+        {/* Updated Top Section with Notification Icon and Refresh Data */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 relative">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Farm Dashboard
+          </h1>
+          <div className="flex items-center gap-4">
+            {/* Notification Icon with Badge and Dropdown */}
+            <div className="relative">
+              <Bell 
+                className="cursor-pointer" 
+                size={24} 
+                onClick={toggleAlertDropdown}
+              />
+              {pendingAlerts.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
+                  {pendingAlerts.length}
+                </span>
+              )}
+              {isAlertDropdownOpen && (
+                <div className="absolute right-0 top-10 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-50">
+                  <div className="p-2 max-h-64 overflow-auto">
+                    {pendingAlerts.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No pending alerts
+                      </p>
+                    ) : (
+                      pendingAlerts.map((alert) => (
+                        <div 
+                          key={alert.id} 
+                          className="p-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                        >
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {alert.message}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(alert.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <Button onClick={handleRefreshData} className="self-start">
+              Refresh Data
+            </Button>
+          </div>
         </div>
 
         {/* Status Cards */}
@@ -301,7 +363,7 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Alerts Section */}
+        {/* Alerts Section (Recent Alerts) */}
         <div>
           <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Recent Alerts</h2>
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
