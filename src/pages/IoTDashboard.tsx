@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import {
@@ -34,6 +34,7 @@ import {
   Sliders,
   Activity,
   MapPin,
+  Bell,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { dataService2 } from "@/services/dataService2";
@@ -53,7 +54,11 @@ const IoTDashboard = () => {
   const [thresholdValue, setThresholdValue] = useState([800]); // Default CO2 threshold
   const [locationName, setLocationName] = useState(DEFAULT_LOCATION.name);
 
-  // Fetch real data from Adafruit and OpenWeatherMap using dataService2
+  // State for Alerts dropdown in header
+  const [isAlertDropdownOpen, setIsAlertDropdownOpen] = useState(false);
+  const toggleAlertDropdown = () => setIsAlertDropdownOpen((prev) => !prev);
+
+  // Query to fetch sensor data and location info
   const fetchData = async () => {
     try {
       // Try to get sensor data first
@@ -115,7 +120,7 @@ const IoTDashboard = () => {
         };
       }
 
-      // If no sensor data is available or GPS coordinates are invalid, return null for sensorData and use default location
+      // If no sensor data is available or GPS coordinates are invalid, return default location
       return {
         sensorData: sensorData
           ? {
@@ -143,7 +148,7 @@ const IoTDashboard = () => {
     }
   };
 
-  // Query for all dashboard data
+  // Query for sensor data
   const {
     data: sensorInfo,
     isLoading,
@@ -154,6 +159,20 @@ const IoTDashboard = () => {
     queryFn: fetchData,
     refetchInterval: 60000, // Refetch every minute
   });
+
+  // Query to fetch alert history using dataService2
+  const {
+    data: alerts,
+    isLoading: isAlertsLoading,
+    refetch: refetchAlerts,
+  } = useQuery({
+    queryKey: ["alerts"],
+    queryFn: dataService2.getAlertHistory,
+    refetchInterval: 60000, // same interval as sensor data
+  });
+
+  // Determine pending alerts (not acknowledged)
+  const pendingAlerts = alerts ? alerts.filter((alert) => !alert.acknowledged) : [];
 
   // Since we won't have actual historical data, we'll create empty datasets
   const emptyHistoricalData = (days) => {
@@ -200,6 +219,7 @@ const IoTDashboard = () => {
       description: "Fetching the latest IoT sensor readings",
     });
     refetch();
+    refetchAlerts();
   };
 
   // Check if we have sensor data
@@ -210,7 +230,6 @@ const IoTDashboard = () => {
     if (value === undefined || value === null) {
       return <Badge variant="outline">No data</Badge>;
     }
-
     if (value <= thresholds.low)
       return <Badge className="bg-green-500">Good</Badge>;
     if (value <= thresholds.medium)
@@ -221,17 +240,54 @@ const IoTDashboard = () => {
   return (
     <Layout>
       <div className="space-y-6 pb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Updated Top Section with Notification Icon and Refresh Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
             IoT Sensor Dashboard
           </h1>
-          <Button
-            onClick={handleRefresh}
-            variant="outline"
-            className="self-start"
-          >
-            Refresh Data
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* Notification Icon with Badge and Dropdown */}
+            <div className="relative">
+              <Bell
+                className="cursor-pointer"
+                size={24}
+                onClick={toggleAlertDropdown}
+              />
+              {pendingAlerts.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
+                  {pendingAlerts.length}
+                </span>
+              )}
+              {isAlertDropdownOpen && (
+                <div className="absolute right-0 top-10 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-50">
+                  <div className="p-2 max-h-64 overflow-auto">
+                    {pendingAlerts.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No pending alerts
+                      </p>
+                    ) : (
+                      pendingAlerts.map((alert) => (
+                        <div
+                          key={alert.id}
+                          className="p-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+                        >
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {alert.message}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(alert.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <Button onClick={handleRefresh} variant="outline" className="self-start">
+              Refresh Data
+            </Button>
+          </div>
         </div>
 
         {fetchError && (
@@ -244,8 +300,7 @@ const IoTDashboard = () => {
                     Connection Error
                   </p>
                   <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                    Could not connect to IoT sensors. Using cached or fallback
-                    data.
+                    Could not connect to IoT sensors. Using cached or fallback data.
                   </p>
                 </div>
               </div>
@@ -557,7 +612,7 @@ const IoTDashboard = () => {
 
             {/* Location Card */}
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader>
                 <CardTitle className="flex items-center">
                   <Map className="mr-2 h-5 w-5" />
                   Map Preview
@@ -573,17 +628,13 @@ const IoTDashboard = () => {
                       height="100%"
                       style={{ border: 0 }}
                       src={`https://www.openstreetmap.org/export/embed.html?bbox=${
-                        (sensorInfo?.location?.lng || DEFAULT_LOCATION.lng) -
-                        0.005
+                        (sensorInfo?.location?.lng || DEFAULT_LOCATION.lng) - 0.005
                       },${
-                        (sensorInfo?.location?.lat || DEFAULT_LOCATION.lat) -
-                        0.005
+                        (sensorInfo?.location?.lat || DEFAULT_LOCATION.lat) - 0.005
                       },${
-                        (sensorInfo?.location?.lng || DEFAULT_LOCATION.lng) +
-                        0.005
+                        (sensorInfo?.location?.lng || DEFAULT_LOCATION.lng) + 0.005
                       },${
-                        (sensorInfo?.location?.lat || DEFAULT_LOCATION.lat) +
-                        0.005
+                        (sensorInfo?.location?.lat || DEFAULT_LOCATION.lat) + 0.005
                       }&layer=mapnik&marker=${
                         sensorInfo?.location?.lat || DEFAULT_LOCATION.lat
                       },${sensorInfo?.location?.lng || DEFAULT_LOCATION.lng}`}
@@ -795,6 +846,36 @@ const IoTDashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Recent Alerts Section */}
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+            Recent Alerts
+          </h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {alerts && alerts.slice(0, 3).map((alert) => (
+                <div key={alert.id} className="p-4 flex items-start gap-3">
+                  <div className={`flex-shrink-0 mt-1 ${
+                    alert.type === 'critical' ? 'text-red-500' : 
+                    alert.type === 'warning' ? 'text-yellow-500' : 'text-blue-500'
+                  }`}>
+                    <AlertTriangle size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {alert.message}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(alert.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </div>
     </Layout>
   );
