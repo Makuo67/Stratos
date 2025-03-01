@@ -1,7 +1,3 @@
-Below is the updated README with all Lovable-related sections removed:
-
----
-
 # Stratos Web App
 
 A modern web application built with cutting-edge technologies for Environmental Predictive Analytics.
