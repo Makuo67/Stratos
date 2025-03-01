@@ -36,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     // Add the new menu item
     { name: 'IoT Dashboard', path: '/iot-dashboard', icon: Cpu },
     { name: 'Insights', path: '/insights', icon: LineChart },
-    { name: 'Alerts', path: '/alerts', icon: Bell },
+    // { name: 'Alerts', path: '/alerts', icon: Bell },
     { name: 'Settings', path: '/settings', icon: Settings },
     { name: 'Support', path: '/support', icon: HelpCircle },
   ];
