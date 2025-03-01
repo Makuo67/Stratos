@@ -287,7 +287,7 @@ const getAlertHistory = async () => {
     const alerts = [...mockSystemData.alerts];
     
     // Temperature Alerts
-    if (sensorData.temperature > 30) {
+    if (sensorData.temperature > 35) {
       alerts.unshift({
         id: `alert-temp-${Date.now()}`,
         type: 'warning',
